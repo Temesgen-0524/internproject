@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 class ApiService {
   constructor() {
@@ -9,6 +9,7 @@ class ApiService {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     return user.token || null;
   }
+
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getAuthToken();
@@ -30,7 +31,8 @@ class ApiService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
       return await response.json();
@@ -38,18 +40,6 @@ class ApiService {
       console.error('API request failed:', error);
       throw error;
     }
-  }
-
-  // User endpoints
-  async getUsers() {
-    return this.request('/users');
-  }
-
-  async createUser(userData) {
-    return this.request('/users', {
-      method: 'POST',
-      body: userData,
-    });
   }
 
   // Auth endpoints
@@ -70,9 +60,23 @@ class ApiService {
   async getProfile() {
     return this.request('/auth/profile');
   }
+
+  // User endpoints
+  async getUsers() {
+    return this.request('/users');
+  }
+
+  async createUser(userData) {
+    return this.request('/users', {
+      method: 'POST',
+      body: userData,
+    });
+  }
+
   // Complaint endpoints
   async getComplaints() {
-    return this.request('/complaints');
+    const response = await this.request('/complaints');
+    return response.complaints || response.data || response || [];
   }
 
   async createComplaint(complaintData) {
@@ -95,10 +99,10 @@ class ApiService {
       body: { status },
     });
   }
+
   // Club endpoints
   async getClubs() {
     const response = await this.request('/clubs');
-    // Ensure we return the clubs array
     return response.clubs || response.data || response || [];
   }
 
@@ -109,10 +113,32 @@ class ApiService {
     });
   }
 
+  async joinClub(clubId, memberData) {
+    return this.request(`/clubs/${clubId}/join`, {
+      method: 'POST',
+      body: memberData,
+    });
+  }
+
+  async approveClubMember(clubId, memberId) {
+    return this.request(`/clubs/${clubId}/members/${memberId}/approve`, {
+      method: 'PATCH',
+    });
+  }
+
+  async rejectClubMember(clubId, memberId) {
+    return this.request(`/clubs/${clubId}/members/${memberId}/reject`, {
+      method: 'PATCH',
+    });
+  }
+
+  async getClubJoinRequests(clubId) {
+    return this.request(`/clubs/${clubId}/join-requests`);
+  }
+
   // Post endpoints
   async getPosts() {
     const response = await this.request('/posts');
-    // Ensure we return the posts array
     return response.posts || response.data || response || [];
   }
 
@@ -128,10 +154,10 @@ class ApiService {
       method: 'DELETE',
     });
   }
+
   // Election endpoints
   async getElections() {
     const response = await this.request('/elections');
-    // Ensure we return the elections array
     return response.elections || response.data || response || [];
   }
 
@@ -154,6 +180,7 @@ class ApiService {
       method: 'POST',
     });
   }
+
   // Contact endpoints
   async submitContactMessage(contactData) {
     return this.request('/contact', {
@@ -162,6 +189,10 @@ class ApiService {
     });
   }
 
+  async getContactMessages() {
+    const response = await this.request('/contact');
+    return response.contacts || response.data || response || [];
+  }
 }
 
 export const apiService = new ApiService();

@@ -64,10 +64,31 @@ const clubSchema = new mongoose.Schema({
       ref: 'User',
       required: true
     },
+    fullName: {
+      type: String,
+      required: true
+    },
+    department: {
+      type: String,
+      required: true
+    },
+    year: {
+      type: String,
+      required: true
+    },
+    background: {
+      type: String,
+      trim: true
+    },
     role: {
       type: String,
       enum: ['member', 'officer', 'president', 'vice_president', 'secretary', 'treasurer'],
       default: 'member'
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
     },
     joinedAt: {
       type: Date,
@@ -105,6 +126,18 @@ const clubSchema = new mongoose.Schema({
       /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
       'Please provide a valid email'
     ]
+  },
+  officeLocation: {
+    type: String,
+    trim: true
+  },
+  contactPhone: {
+    type: String,
+    trim: true
+  },
+  website: {
+    type: String,
+    trim: true
   },
   meetingSchedule: {
     type: String,
@@ -151,7 +184,7 @@ clubSchema.index({ 'members.user': 1 });
 
 // Virtual for member count
 clubSchema.virtual('memberCount').get(function() {
-  return this.members.length;
+  return this.members.filter(member => member.status === 'approved').length;
 });
 
 // Virtual for event count

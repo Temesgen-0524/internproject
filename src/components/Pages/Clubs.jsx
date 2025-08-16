@@ -17,8 +17,22 @@ export function Clubs() {
     name: '',
     category: 'Academic',
     description: '',
-    image: ''
+    image: '',
+    officeLocation: '',
+    contactEmail: '',
+    contactPhone: '',
+    website: ''
   });
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [selectedClub, setSelectedClub] = useState(null);
+  const [joinFormData, setJoinFormData] = useState({
+    fullName: '',
+    department: '',
+    year: '',
+    background: ''
+  });
+  const [joinRequests, setJoinRequests] = useState([]);
+  const [showJoinRequests, setShowJoinRequests] = useState(false);
 
   const categories = ['All', 'Academic', 'Sports', 'Cultural', 'Technology', 'Service', 'Arts'];
 
@@ -49,14 +63,68 @@ export function Clubs() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleJoinClub = (clubId) => {
+  const handleJoinClub = (club) => {
     if (!user) {
       toast.error("Please login to join clubs");
       return;
     }
-    toast.success("Successfully joined the club!");
+    setSelectedClub(club);
+    setShowJoinModal(true);
   };
 
+  const handleSubmitJoinRequest = async (e) => {
+    e.preventDefault();
+    
+    if (!joinFormData.fullName || !joinFormData.department || !joinFormData.year) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    try {
+      await apiService.joinClub(selectedClub.id, joinFormData);
+      toast.success("Join request submitted successfully!");
+      setShowJoinModal(false);
+      setJoinFormData({
+        fullName: '',
+        department: '',
+        year: '',
+        background: ''
+      });
+    } catch (error) {
+      toast.error(error.message || "Failed to submit join request");
+    }
+  };
+
+  const fetchJoinRequests = async (clubId) => {
+    try {
+      const response = await apiService.getClubJoinRequests(clubId);
+      setJoinRequests(response.requests || []);
+      setShowJoinRequests(true);
+    } catch (error) {
+      toast.error("Failed to fetch join requests");
+    }
+  };
+
+  const handleApproveRequest = async (clubId, memberId) => {
+    try {
+      await apiService.approveClubMember(clubId, memberId);
+      toast.success("Member approved successfully!");
+      fetchJoinRequests(clubId);
+      await fetchClubs(); // Refresh clubs to update member count
+    } catch (error) {
+      toast.error("Failed to approve member");
+    }
+  };
+
+  const handleRejectRequest = async (clubId, memberId) => {
+    try {
+      await apiService.rejectClubMember(clubId, memberId);
+      toast.success("Member rejected successfully!");
+      fetchJoinRequests(clubId);
+    } catch (error) {
+      toast.error("Failed to reject member");
+    }
+  };
   const handleCreateClub = async (e) => {
     e.preventDefault();
     if (!user?.isAdmin && user?.role !== "admin") {
@@ -155,6 +223,34 @@ export function Clubs() {
                   rows="3"
                   required
                 />
+               <input
+                 type="text"
+                 placeholder="Office Location"
+                 value={newClub.officeLocation}
+                 onChange={(e) => setNewClub({...newClub, officeLocation: e.target.value})}
+                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+               />
+               <input
+                 type="email"
+                 placeholder="Contact Email"
+                 value={newClub.contactEmail}
+                 onChange={(e) => setNewClub({...newClub, contactEmail: e.target.value})}
+                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+               />
+               <input
+                 type="tel"
+                 placeholder="Contact Phone"
+                 value={newClub.contactPhone}
+                 onChange={(e) => setNewClub({...newClub, contactPhone: e.target.value})}
+                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+               />
+               <input
+                 type="url"
+                 placeholder="Website URL"
+                 value={newClub.website}
+                 onChange={(e) => setNewClub({...newClub, website: e.target.value})}
+                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+               />
                 <input
                   type="url"
                   placeholder="Club Image URL (optional)"
@@ -258,6 +354,14 @@ export function Clubs() {
                     ✕
                   </button>
                 )}
+               {user?.isAdmin && (
+                 <button
+                   onClick={() => fetchJoinRequests(club.id)}
+                   className="absolute top-4 right-16 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                 >
+                   👥
+                 </button>
+               )}
               </div>
               
               <div className="p-6">
@@ -274,6 +378,21 @@ export function Clubs() {
                   {club.description}
                 </p>
 
+               {/* Contact Info */}
+               {(club.officeLocation || club.contactEmail || club.contactPhone) && (
+                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                   <h4 className="font-medium text-gray-900 mb-2">Contact Information</h4>
+                   {club.officeLocation && (
+                     <p className="text-sm text-gray-600">📍 {club.officeLocation}</p>
+                   )}
+                   {club.contactEmail && (
+                     <p className="text-sm text-gray-600">📧 {club.contactEmail}</p>
+                   )}
+                   {club.contactPhone && (
+                     <p className="text-sm text-gray-600">📞 {club.contactPhone}</p>
+                   )}
+                 </div>
+               )}
                 {/* Stats */}
                 <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                   <div className="flex items-center">
@@ -287,7 +406,7 @@ export function Clubs() {
                 </div>
                 
                 <button 
-                  onClick={() => handleJoinClub(club.id)}
+                 onClick={() => handleJoinClub(club)}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
                   Join Club
@@ -343,6 +462,157 @@ export function Clubs() {
           </div>
         </div>
       </div>
+
+     {/* Join Club Modal */}
+     {showJoinModal && selectedClub && (
+       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+         <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+           <div className="p-6">
+             <div className="flex items-center justify-between mb-6">
+               <h2 className="text-xl font-bold text-gray-900">
+                 Join {selectedClub.name}
+               </h2>
+               <button
+                 onClick={() => setShowJoinModal(false)}
+                 className="text-gray-400 hover:text-gray-600">
+                 ✕
+               </button>
+             </div>
+
+             <form onSubmit={handleSubmitJoinRequest} className="space-y-4">
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                   Full Name *
+                 </label>
+                 <input
+                   type="text"
+                   required
+                   value={joinFormData.fullName}
+                   onChange={(e) => setJoinFormData({...joinFormData, fullName: e.target.value})}
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="Your full name"
+                 />
+               </div>
+
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                   Department *
+                 </label>
+                 <select
+                   required
+                   value={joinFormData.department}
+                   onChange={(e) => setJoinFormData({...joinFormData, department: e.target.value})}
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                   <option value="">Select Department</option>
+                   <option value="Computer Science">Computer Science</option>
+                   <option value="Engineering">Engineering</option>
+                   <option value="Business">Business</option>
+                   <option value="Medicine">Medicine</option>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                   Academic Year *
+                 </label>
+                 <select
+                   required
+                   value={joinFormData.year}
+                   onChange={(e) => setJoinFormData({...joinFormData, year: e.target.value})}
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                   <option value="">Select Year</option>
+                   <option value="1st Year">1st Year</option>
+                   <option value="2nd Year">2nd Year</option>
+                   <option value="3rd Year">3rd Year</option>
+                   <option value="4th Year">4th Year</option>
+                   <option value="5th Year">5th Year</option>
+                 </select>
+               </div>
+                   <option value="Agriculture">Agriculture</option>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                   Background/Why do you want to join?
+                 </label>
+                 <textarea
+                   value={joinFormData.background}
+                   onChange={(e) => setJoinFormData({...joinFormData, background: e.target.value})}
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   rows="3"
+                   placeholder="Tell us about your background and why you want to join this club"
+                 />
+               </div>
+                   <option value="Education">Education</option>
+               <div className="flex gap-4">
+                 <button
+                   type="button"
+                   onClick={() => setShowJoinModal(false)}
+                   className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                   Cancel
+                 </button>
+                 <button
+                   type="submit"
+                   className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                   Submit Request
+                 </button>
+               </div>
+             </form>
+           </div>
+         </div>
+       </div>
+     )}
+                 </select>
+     {/* Join Requests Modal */}
+     {showJoinRequests && (
+       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+         <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+           <div className="p-6">
+             <div className="flex items-center justify-between mb-6">
+               <h2 className="text-xl font-bold text-gray-900">
+                 Join Requests
+               </h2>
+               <button
+                 onClick={() => setShowJoinRequests(false)}
+                 className="text-gray-400 hover:text-gray-600">
+                 ✕
+               </button>
+             </div>
+               </div>
+             <div className="space-y-4">
+               {joinRequests.length === 0 ? (
+                 <p className="text-gray-600 text-center py-8">No pending join requests</p>
+               ) : (
+                 joinRequests.map((request) => (
+                   <div key={request._id} className="border border-gray-200 rounded-lg p-4">
+                     <div className="flex justify-between items-start mb-3">
+                       <div>
+                         <h3 className="font-semibold text-gray-900">{request.fullName}</h3>
+                         <p className="text-sm text-gray-600">{request.department} - {request.year}</p>
+                         <p className="text-sm text-gray-600">Username: {request.user?.username}</p>
+                       </div>
+                       <div className="flex gap-2">
+                         <button
+                           onClick={() => handleApproveRequest(selectedClub?.id, request._id)}
+                           className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors">
+                           Approve
+                         </button>
+                         <button
+                           onClick={() => handleRejectRequest(selectedClub?.id, request._id)}
+                           className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors">
+                           Reject
+                         </button>
+                       </div>
+                     </div>
+                     {request.background && (
+                       <div>
+                         <p className="text-sm font-medium text-gray-700 mb-1">Background:</p>
+                         <p className="text-sm text-gray-600">{request.background}</p>
+                       </div>
+                     )}
+                   </div>
+                 ))
+               )}
+             </div>
+           </div>
+         </div>
+       </div>
+     )}
     </div>
   );
 }

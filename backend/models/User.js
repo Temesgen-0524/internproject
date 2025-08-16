@@ -11,20 +11,20 @@ const userSchema = new mongoose.Schema(
 			trim: true,
 			maxlength: [50, "Name cannot be more than 50 characters"],
 		},
-		email: {
+		username: {
 			type: String,
 			required: [true, "Please provide an email"],
 			unique: true,
 			lowercase: true,
 			match: [
-				/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-				"Please provide a valid email",
+				/^dbu\d{8}$/,
+				"Username must start with 'dbu' followed by 8 digits",
 			],
 		},
 		password: {
 			type: String,
 			required: [true, "Please provide a password"],
-			minlength: [6, "Password must be at least 6 characters"],
+			minlength: [8, "Password must be at least 8 characters"],
 			select: false,
 		},
 		studentId: {
@@ -37,11 +37,6 @@ const userSchema = new mongoose.Schema(
 			trim: true,
 		},
 		year: {
-			type: String,
-			enum: [
-				"1st Year",
-				"2nd Year",
-				"3rd Year",
 				"4th Year",
 				"5th Year",
 				"Graduate",
@@ -109,8 +104,7 @@ const userSchema = new mongoose.Schema(
 );
 
 // Index for better query performance
-userSchema.index({ email: 1 });
-userSchema.index({ studentId: 1 });
+userSchema.index({ username: 1 });
 userSchema.index({ role: 1 });
 
 // Encrypt password before saving

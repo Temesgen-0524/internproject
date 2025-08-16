@@ -6,7 +6,7 @@ const candidateSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  studentId: {
+  username: {
     type: String,
     required: true
   },
@@ -18,6 +18,11 @@ const candidateSchema = new mongoose.Schema({
   year: {
     type: String,
     required: true
+  },
+  academicYear: {
+    type: String,
+    required: [true, 'Academic year is required for candidates'],
+    enum: ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year']
   },
   position: {
     type: String,

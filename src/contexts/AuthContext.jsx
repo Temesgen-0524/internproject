@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { adminCredentials } from "../data/adminCredentials";
 import { apiService } from "../services/api";
 import toast from "react-hot-toast";
 
@@ -15,13 +14,11 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [adminCredential, setAdminCredential] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check for existing session
     const savedUser = localStorage.getItem("user");
-    const savedAdminCred = localStorage.getItem("adminCredential");
     
     if (savedUser) {
       const userData = JSON.parse(savedUser);
@@ -30,9 +27,6 @@ export const AuthProvider = ({ children }) => {
       if (userData.token) {
         verifyToken(userData.token);
       }
-    }
-    if (savedAdminCred) {
-      setAdminCredential(JSON.parse(savedAdminCred));
     }
     
     setLoading(false);
@@ -47,125 +41,44 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password, otp = null, adminRole = null) => {
+  const login = async (username, password) => {
     try {
       setLoading(true);
 
-      // Admin login
-      if (adminRole) {
-        const credential = adminCredentials.find(
-          (cred) => cred.email.toLowerCase() === email.toLowerCase() && cred.role === adminRole
-        );
-
-        if (!credential || credential.password !== password) {
-          throw new Error("Invalid admin credentials");
-        }
-
-        // Create a proper JWT-like token for admin
-        const tokenPayload = {
-          id: credential.id,
-          email: credential.email,
-          role: credential.role,
-          isAdmin: true,
-          name: credential.name,
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
-        };
-        
-        // Create a simple token structure: header.payload.signature
-        const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-        const payload = btoa(JSON.stringify(tokenPayload));
-        const signature = btoa("mock-signature-for-admin");
-        const mockToken = `${header}.${payload}.${signature}`;
-
+      // Admin login check
+      if (username.toLowerCase() === "admindbu12" && password === "Admin123#") {
         const adminUser = {
-          id: credential.id,
-          name: credential.name,
-          email: credential.email,
-          role: credential.role,
+          id: "admin_1",
+          username: "AdminDbu12",
+          name: "System Administrator",
+          role: "admin",
           isAdmin: true,
-          token: mockToken,
-          name: credential.name
+          token: "admin_token_" + Date.now(),
         };
-
-        // Log admin access
-        const adminLog = {
-          timestamp: new Date().toISOString(),
-          adminName: credential.name,
-          adminEmail: credential.email,
-          action: "Admin Login",
-          ipAddress: "127.0.0.1",
-        };
-
-        const existingLogs = JSON.parse(localStorage.getItem("admin_logs") || "[]");
-        existingLogs.push(adminLog);
-        localStorage.setItem("admin_logs", JSON.stringify(existingLogs));
 
         setUser(adminUser);
-        setAdminCredential(credential);
         localStorage.setItem("user", JSON.stringify(adminUser));
-        localStorage.setItem("adminCredential", JSON.stringify(credential));
         
         return adminUser;
       }
 
-      // Real student login via API
-      if (email && password) {
-        try {
-          const response = await apiService.login({ email, password });
-          const studentUser = {
-            ...response.user,
-            token: response.token,
-            name: response.user.name,
-            isAdmin: response.user.role === "admin",
-          };
+      // Student login via API
+      try {
+        const response = await apiService.login({ username, password });
+        const studentUser = {
+          ...response.user,
+          token: response.token,
+          isAdmin: response.user.role === "admin",
+        };
 
-          // Set the token in the API service
-          localStorage.setItem("user", JSON.stringify(studentUser));
-          setUser(studentUser);
-          
-          return studentUser;
-        } catch (error) {
-          // Fallback to mock login for development
-          console.warn('API login failed, using mock login:', error.message);
-          
-          // Create a proper JWT-like token for student
-          const tokenPayload = {
-            id: "student_" + Date.now(),
-            email: email,
-            role: "student",
-            isAdmin: false,
-            name: "Student User",
-            iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
-          };
-          
-          const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-          const payload = btoa(JSON.stringify(tokenPayload));
-          const signature = btoa("mock-signature-for-student");
-          const mockToken = `${header}.${payload}.${signature}`;
-          
-          const studentUser = {
-            id: "student_" + Date.now(),
-            name: "Student User",
-            name: "Student User",
-            email: email,
-            department: "Computer Science",
-            year: "4th Year",
-            studentId: "DBU-2024-001",
-            role: "student",
-            isAdmin: false,
-            token: mockToken,
-          };
-
-          localStorage.setItem("user", JSON.stringify(studentUser));
-          setUser(studentUser);
-          
-          return studentUser;
-        }
+        localStorage.setItem("user", JSON.stringify(studentUser));
+        setUser(studentUser);
+        
+        return studentUser;
+      } catch (error) {
+        console.error('API login failed:', error);
+        throw new Error("Invalid username or password");
       }
-
-      throw new Error("Invalid credentials");
     } catch (error) {
       throw error;
     } finally {
@@ -173,41 +86,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithGoogle = async () => {
+  const register = async (userData) => {
     try {
       setLoading(true);
+      const response = await apiService.register(userData);
       
-      // Create a proper JWT-like token for Google user
-      const tokenPayload = {
-        id: "google_" + Date.now(),
-        email: "user@gmail.com",
-        role: "student",
+      const newUser = {
+        ...response.user,
+        token: response.token,
         isAdmin: false,
-        name: "Google User",
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
-      };
-      
-      const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-      const payload = btoa(JSON.stringify(tokenPayload));
-      const signature = btoa("mock-signature-for-google");
-      const mockToken = `${header}.${payload}.${signature}`;
-      
-      // Simulate Google login
-      const googleUser = {
-        id: "google_" + Date.now(),
-        name: "Google User",
-        name: "Google User",
-        email: "user@gmail.com",
-        role: "student",
-        isAdmin: false,
-        token: mockToken,
       };
 
-      setUser(googleUser);
-      localStorage.setItem("user", JSON.stringify(googleUser));
+      localStorage.setItem("user", JSON.stringify(newUser));
+      setUser(newUser);
       
-      return googleUser;
+      return newUser;
     } catch (error) {
       throw error;
     } finally {
@@ -217,18 +110,15 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    setAdminCredential(null);
     localStorage.removeItem("user");
-    localStorage.removeItem("adminCredential");
     toast.success("Logged out successfully");
   };
 
   const value = {
     user,
-    adminCredential,
     loading,
     login,
-    loginWithGoogle,
+    register,
     logout,
   };
 

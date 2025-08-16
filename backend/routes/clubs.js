@@ -259,6 +259,14 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
 // @access  Private
 router.post('/:id/join', protect, async (req, res) => {
   try {
+    const { fullName, department, year, background } = req.body;
+
+    if (!fullName || !department || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name, department, and year are required'
+      });
+    }
     const club = await Club.findById(req.params.id);
     if (!club) {
       return res.status(404).json({
@@ -275,8 +283,14 @@ router.post('/:id/join', protect, async (req, res) => {
     }
 
     // Check if user is already a member
-    const isMember = club.members.some(member => member.user.toString() === (req.user._id || req.user.id));
-    if (isMember) {
+    const existingMember = club.members.find(member => member.user.toString() === (req.user._id || req.user.id));
+    if (existingMember) {
+      if (existingMember.status === 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: 'Your join request is already pending approval'
+        });
+      }
       return res.status(400).json({
         success: false,
         message: 'You are already a member of this club'
@@ -286,19 +300,20 @@ router.post('/:id/join', protect, async (req, res) => {
     // Add user to club members
     club.members.push({
       user: req.user._id || req.user.id,
-      role: 'member'
+      fullName,
+      department,
+      year,
+      background,
+      role: 'member',
+      status: 'pending'
     });
 
     await club.save();
 
-    // Add club to user's joinedClubs
-    await User.findByIdAndUpdate(req.user._id || req.user.id, {
-      $addToSet: { joinedClubs: club._id }
-    });
 
     res.json({
       success: true,
-      message: 'Successfully joined the club'
+      message: 'Join request submitted successfully. Waiting for admin approval.'
     });
   } catch (error) {
     console.error('Join club error:', error);
@@ -309,6 +324,114 @@ router.post('/:id/join', protect, async (req, res) => {
   }
 });
 
+// @desc    Approve club member
+// @route   PATCH /api/clubs/:id/members/:memberId/approve
+// @access  Private/Admin
+router.patch('/:id/members/:memberId/approve', protect, adminOnly, async (req, res) => {
+  try {
+    const club = await Club.findById(req.params.id);
+    if (!club) {
+      return res.status(404).json({
+        success: false,
+        message: 'Club not found'
+      });
+    }
+
+    const member = club.members.id(req.params.memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found'
+      });
+    }
+
+    member.status = 'approved';
+    await club.save();
+
+    // Add club to user's joinedClubs
+    await User.findByIdAndUpdate(member.user, {
+      $addToSet: { joinedClubs: club._id }
+    });
+
+    res.json({
+      success: true,
+      message: 'Member approved successfully'
+    });
+  } catch (error) {
+    console.error('Approve member error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error approving member'
+    });
+  }
+});
+
+// @desc    Reject club member
+// @route   PATCH /api/clubs/:id/members/:memberId/reject
+// @access  Private/Admin
+router.patch('/:id/members/:memberId/reject', protect, adminOnly, async (req, res) => {
+  try {
+    const club = await Club.findById(req.params.id);
+    if (!club) {
+      return res.status(404).json({
+        success: false,
+        message: 'Club not found'
+      });
+    }
+
+    const member = club.members.id(req.params.memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found'
+      });
+    }
+
+    member.status = 'rejected';
+    await club.save();
+
+    res.json({
+      success: true,
+      message: 'Member rejected successfully'
+    });
+  } catch (error) {
+    console.error('Reject member error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error rejecting member'
+    });
+  }
+});
+
+// @desc    Get club join requests
+// @route   GET /api/clubs/:id/join-requests
+// @access  Private/Admin
+router.get('/:id/join-requests', protect, adminOnly, async (req, res) => {
+  try {
+    const club = await Club.findById(req.params.id)
+      .populate('members.user', 'name username');
+
+    if (!club) {
+      return res.status(404).json({
+        success: false,
+        message: 'Club not found'
+      });
+    }
+
+    const pendingRequests = club.members.filter(member => member.status === 'pending');
+
+    res.json({
+      success: true,
+      requests: pendingRequests
+    });
+  } catch (error) {
+    console.error('Get join requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching join requests'
+    });
+  }
+});
 // @desc    Leave club
 // @route   POST /api/clubs/:id/leave
 // @access  Private

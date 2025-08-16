@@ -35,6 +35,7 @@ export function Elections() {
 	const [newCandidate, setNewCandidate] = useState({
 		name: "",
 		department: "",
+		academicYear: "",
 		profileImage: null,
 	});
 
@@ -63,9 +64,10 @@ export function Elections() {
 		if (
 			!newCandidate.name ||
 			!newCandidate.department ||
+			!newCandidate.academicYear ||
 			!newCandidate.profileImage
 		) {
-			toast.error("Candidate name, department, and image are required");
+			toast.error("Candidate name, department, academic year, and image are required");
 			return;
 		}
 		setNewElection((prev) => ({
@@ -74,13 +76,12 @@ export function Elections() {
 				...newCandidate, 
 				votes: 0,
 				position: "President",
-				year: "4th Year",
-				studentId: `DBU-${Date.now()}`,
+				username: `dbu${Date.now().toString().slice(-8)}`,
 				platform: ["Student Welfare", "Academic Excellence"],
 				profileImage: newCandidate.profileImage || "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=400"
 			}],
 		}));
-		setNewCandidate({ name: "", department: "", profileImage: null });
+		setNewCandidate({ name: "", department: "", academicYear: "", profileImage: null });
 	};
 
 	const handleProfileImageChange = (e) => {
@@ -312,7 +313,7 @@ export function Elections() {
 									<h3 className="text-lg font-medium text-gray-900 mb-2">
 										Candidates
 									</h3>
-									<div className="flex gap-4">
+									<div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
 										<input
 											type="text"
 											placeholder="Candidate Name"
@@ -323,7 +324,7 @@ export function Elections() {
 													name: e.target.value,
 												})
 											}
-											className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+											className="px-4 py-2 border border-gray-300 rounded-lg"
 										/>
 										<input
 											type="text"
@@ -335,14 +336,32 @@ export function Elections() {
 													department: e.target.value,
 												})
 											}
-											className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+											className="px-4 py-2 border border-gray-300 rounded-lg"
 										/>
+										<select
+											value={newCandidate.academicYear}
+											onChange={(e) =>
+												setNewCandidate({
+													...newCandidate,
+													academicYear: e.target.value,
+												})
+											}
+											className="px-4 py-2 border border-gray-300 rounded-lg">
+											<option value="">Select Academic Year</option>
+											<option value="1st Year">1st Year</option>
+											<option value="2nd Year">2nd Year</option>
+											<option value="3rd Year">3rd Year</option>
+											<option value="4th Year">4th Year</option>
+											<option value="5th Year">5th Year</option>
+										</select>
 										<input
 											type="file"
 											accept="image/*"
 											onChange={handleProfileImageChange}
-											className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+											className="px-4 py-2 border border-gray-300 rounded-lg"
 										/>
+									</div>
+									<div className="flex justify-end">
 										<button
 											type="button"
 											onClick={handleAddCandidate}
@@ -353,7 +372,7 @@ export function Elections() {
 									<ul className="mt-2">
 										{newElection.candidates.map((candidate, index) => (
 											<li key={index} className="text-gray-700">
-												{candidate.name} ({candidate.department})
+												{candidate.name} ({candidate.department} - {candidate.academicYear})
 											</li>
 										))}
 									</ul>
@@ -569,7 +588,7 @@ export function Elections() {
 													<h3 className="text-lg font-semibold text-gray-900">
 														{candidate.name} ({candidate.department})
 													</h3>
-													<p className="text-gray-600">{candidate.position}</p>
+													<p className="text-gray-600">{candidate.position} - {candidate.academicYear}</p>
 													<p className="text-sm font-medium text-gray-700 mb-1">
 														Votes: {candidate.votes.toLocaleString()}
 													</p>

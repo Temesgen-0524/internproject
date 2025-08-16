@@ -19,26 +19,21 @@ const validateUserRegistration = [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage('Name must be between 2 and 50 characters'),
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email'),
+  body('username')
+    .matches(/^dbu\d{8}$/i)
+    .withMessage('Username must start with dbu followed by 8 digits'),
   body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
-  body('studentId')
-    .optional()
-    .trim()
-    .isLength({ min: 3, max: 20 })
-    .withMessage('Student ID must be between 3 and 20 characters'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])/)
+    .withMessage('Password must contain uppercase, lowercase, digit, and symbol'),
   handleValidationErrors
 ];
 
 const validateUserLogin = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email'),
+  body('username')
+    .matches(/^dbu\d{8}$/i)
+    .withMessage('Username must start with dbu followed by 8 digits'),
   body('password')
     .notEmpty()
     .withMessage('Password is required'),

@@ -18,34 +18,23 @@ const generateToken = (id) => {
 // @access  Public
 router.post('/register', validateUserRegistration, async (req, res) => {
   try {
-    const { name, email, password, studentId, department, year, phoneNumber } = req.body;
+    const { name, username, password, department, year, phoneNumber } = req.body;
 
     // Check if user exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ username });
     if (userExists) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email'
+        message: 'User already exists with this username'
       });
     }
 
-    // Check if student ID exists (if provided)
-    if (studentId) {
-      const studentIdExists = await User.findOne({ studentId });
-      if (studentIdExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Student ID already registered'
-        });
-      }
-    }
 
     // Create user
     const user = await User.create({
       name,
-      email,
+      username,
       password,
-      studentId,
       department,
       year,
       phoneNumber
@@ -62,8 +51,7 @@ router.post('/register', validateUserRegistration, async (req, res) => {
         id: user._id,
         _id: user._id,
         name: user.name,
-        email: user.email,
-        studentId: user.studentId,
+        username: user.username,
         department: user.department,
         year: user.year,
         role: user.role,
@@ -84,10 +72,10 @@ router.post('/register', validateUserRegistration, async (req, res) => {
 // @access  Public
 router.post('/login', validateUserLogin, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
     // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ username }).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -126,8 +114,7 @@ router.post('/login', validateUserLogin, async (req, res) => {
         id: user._id,
         _id: user._id,
         name: user.name,
-        email: user.email,
-        studentId: user.studentId,
+        username: user.username,
         department: user.department,
         year: user.year,
         role: user.role,
